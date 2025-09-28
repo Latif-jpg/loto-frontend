@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LotoEmploi</title>
+    <!-- Icône du site (optionnel, tu peux mettre ton logo plus tard) -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <style>
+      /* Force la page à occuper 100% de la largeur et centre le contenu */
+      body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #f5f6fa; /* gris clair */
+        font-family: Arial, sans-serif;
+      }
+      #root {
+        width: 100%;
+        max-width: 480px; /* largeur max du cadre */
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
