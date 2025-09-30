@@ -1,3 +1,5 @@
+// src/components/PaiementPage.js
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -17,22 +19,20 @@ const PaiementPage = () => {
     const { userId } = useParams();
     const navigate = useNavigate();
 
-    // Utilisation des états pour les données et le contrôle
     const [clientInfo, setClientInfo] = useState(null);
     const [nbTickets, setNbTickets] = useState(1);
     const [plateforme, setPlateforme] = useState('Orange Money'); 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Calcul du montant total
     const totalMontant = nbTickets * PRIX_TICKET_UNITAIRE;
-    const MIN_AMOUNT = PRIX_TICKET_UNITAIRE; // 2000 XOF
+    const MIN_AMOUNT = PRIX_TICKET_UNITAIRE; 
 
     // --- LOGIQUE DE CHARGEMENT DES INFOS UTILISATEUR ---
     useEffect(() => {
         const fetchClientInfo = async () => {
+            // ... (logique de chargement Supabase)
             try {
-                // Utilisation de la connexion Supabase du frontend (si configurée)
                 const { data, error } = await supabase
                     .from('utilisateurs')
                     .select('*')
@@ -41,9 +41,8 @@ const PaiementPage = () => {
 
                 if (error) throw error;
                 setClientInfo(data);
-
             } catch (err) {
-                setError('Impossible de trouver vos informations utilisateur. Veuillez recommencer l\'inscription.');
+                setError('Impossible de trouver vos informations utilisateur.');
             } finally {
                 setLoading(false);
             }
@@ -52,7 +51,7 @@ const PaiementPage = () => {
         if (userId) {
             fetchClientInfo();
         } else {
-            setError("L'ID utilisateur est manquant. Veuillez retourner à l'inscription.");
+            setError("L'ID utilisateur est manquant.");
             setLoading(false);
         }
     }, [userId]);
@@ -69,7 +68,6 @@ const PaiementPage = () => {
         setError(null);
 
         try {
-            // Requête POST vers le Serveur Render
             const response = await axios.post(INIT_PAYMENT_URL, {
                 userId: clientInfo.id,
                 amount: totalMontant,
@@ -78,7 +76,6 @@ const PaiementPage = () => {
             });
 
             if (response.data && response.data.checkoutPageUrlWithPaymentToken) {
-                // Redirection vers la page de paiement PayDunya/Yengapay
                 window.location.href = response.data.checkoutPageUrlWithPaymentToken;
             } else {
                 setError('Erreur lors de l\'initialisation du paiement (réponse serveur invalide).');
@@ -116,44 +113,47 @@ const PaiementPage = () => {
         transition: 'background-color 0.3s'
     };
 
-    // Style des informations : Ajout de 'whiteSpace: "nowrap"' pour forcer l'alignement
+    // Style des informations (sans 'étoiles' et aligné)
     const infoStyle = { 
         margin: '5px 0', 
         padding: '8px 0',
         fontWeight: 'normal',
         color: '#343a40',
-        display: 'flex', // Utiliser flexbox pour aligner clé/valeur
-        justifyContent: 'space-between', // Espacement entre clé et valeur
-        borderBottom: '1px dotted #eee', // Séparateur discret
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        borderBottom: '1px dotted #eee',
     };
 
     const infoLabelStyle = {
         fontWeight: 'bold',
-        minWidth: '120px', // Donne un minimum de largeur au label
+        minWidth: '120px', 
         color: '#555',
     };
     
-    // Style pour l'emplacement du logo
+    // Style pour l'emplacement du logo (Stabilité assurée)
     const logoContainerStyle = {
         textAlign: 'center', 
-        marginBottom: '25px'
+        marginBottom: '25px',
+        overflow: 'hidden', 
     };
     
     const logoStyle = {
-        width: '120px', // Taille du logo
+        maxWidth: '100%', // Empêche le débordement horizontal
+        maxHeight: '120px', 
         height: 'auto',
-        // Ajout d'une marge bas pour séparer du titre
+        display: 'block', 
+        margin: '0 auto', 
         marginBottom: '10px', 
     };
     // ----------------------------
 
     if (loading && !clientInfo) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Chargement de vos informations...</div>;
-    if (error) return <div style={{ color: 'red', textAlign: 'center', marginTop: '20px' }}>Erreur : {error}</div>;
+    if (error && !clientInfo) return <div style={{ color: 'red', textAlign: 'center', marginTop: '20px' }}>Erreur : {error}</div>;
 
     return (
         <div className="card-container" style={cardStyle}>
             
-            {/* Emplacement du Logo et ajustement des marges */}
+            {/* Emplacement du Logo Corrigé */}
             <div style={logoContainerStyle}>
                 <img 
                     src="/chemin/vers/votre/logo.png" // ⚠️ METTEZ LE CHEMIN RÉEL ICI
@@ -166,23 +166,26 @@ const PaiementPage = () => {
                 Résumé & Paiement du Ticket
             </h2>
 
-            {/* Bloc d'Informations (Nettoyé et ajusté) */}
+            {/* Bloc d'Informations (Nettoyé et aligné) */}
             <div style={{ border: '1px solid #dee2e6', backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', marginBottom: '25px' }}>
                 <h4 style={{ margin: '0 0 15px 0', color: '#007BFF', borderBottom: '1px solid #dee2e6' }}>Vos Infos Identitaires :</h4>
                 
-                {/* 🚨 Correction : Suppression des ** et alignement via Flexbox */}
-                <div style={infoStyle}>
-                    <span style={infoLabelStyle}>Nom/Prénom:</span>
-                    <span>{clientInfo.nom} {clientInfo.prenom}</span>
-                </div>
-                <div style={infoStyle}>
-                    <span style={infoLabelStyle}>Téléphone:</span>
-                    <span>{clientInfo.telephone}</span>
-                </div>
-                <div style={infoStyle}>
-                    <span style={infoLabelStyle}>CNIB/CNI:</span>
-                    <span>{clientInfo.reference_cnib}</span>
-                </div>
+                {clientInfo && (
+                    <>
+                        <div style={infoStyle}>
+                            <span style={infoLabelStyle}>Nom/Prénom:</span>
+                            <span>{clientInfo.nom} {clientInfo.prenom}</span>
+                        </div>
+                        <div style={infoStyle}>
+                            <span style={infoLabelStyle}>Téléphone:</span>
+                            <span>{clientInfo.telephone}</span>
+                        </div>
+                        <div style={infoStyle}>
+                            <span style={infoLabelStyle}>CNIB/CNI:</span>
+                            <span>{clientInfo.reference_cnib}</span>
+                        </div>
+                    </>
+                )}
             </div>
 
             <div style={{ marginBottom: '20px' }}>
@@ -211,7 +214,6 @@ const PaiementPage = () => {
                         <button
                             key={name}
                             onClick={() => setPlateforme(name)}
-                            // Bouton actif en vert clair, inactif en gris
                             style={{ 
                                 padding: '10px 15px', 
                                 border: '1px solid #28a745', 
