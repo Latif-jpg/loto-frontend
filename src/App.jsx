@@ -12,7 +12,7 @@ const globalStyles = {
     fontFamily: 'Inter, Arial, sans-serif', 
     maxWidth: '800px',
     margin: '0 auto',
-    padding: '20px', // Espace extérieur
+    padding: '20px', 
     backgroundColor: '#F8F9FA', 
     minHeight: '100vh',
 };
@@ -20,7 +20,7 @@ const globalStyles = {
 const headerStyles = {
     borderBottom: '1px solid #dee2e6',
     paddingBottom: '15px',
-    marginBottom: '0', // Important : éviter les marges externes
+    marginBottom: '0', // Éviter les marges externes dans le header
 };
 
 const titleLotoStyle = {
@@ -55,7 +55,7 @@ const App = () => {
                         <Route path="/inscription" element={<InscriptionPage />} />
                         <Route path="/paiement/:userId" element={<PaiementPage />} />
                         
-                        {/* Route de confirmation correcte pour la redirection du backend */}
+                        {/* Route de confirmation correcte */}
                         <Route path="/status/:token" element={<ConfirmationPage />} />
                         
                         <Route path="*" element={<h2>Page Non Trouvée</h2>} />
