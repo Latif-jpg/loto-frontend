@@ -1,7 +1,7 @@
-// src/components/ConfirmationPage.jsx (Nouveau Code Complet)
+// src/components/ConfirmationPage.jsx (Code Corrigé)
 
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom'; // Utilisé pour lire les paramètres d'URL (token)
+import { useParams } from 'react-router-dom'; // 🚨 CHANGEMENT: Utilisez useParams pour lire le chemin
 import axios from 'axios';
 
 // L'URL du statut pointe vers la nouvelle route GET
@@ -9,11 +9,8 @@ const BASE_SERVER_URL = 'https://loto-backend-83zb.onrender.com/api/payments';
 const CHECK_STATUS_URL = `${BASE_SERVER_URL}/status/`;
 
 const ConfirmationPage = () => {
-    // Utiliser useSearchParams pour lire les query parameters (envoyés par Yengapay lors du retour)
-    const [searchParams] = useSearchParams();
-    // Nous devons nous assurer que Yengapay renvoie le token de transaction
-    // Si Yengapay renvoie 'tx_token', utilisez-le. Nous assumons ici 'token'.
-    const paymentToken = searchParams.get('token');
+    // 🚨 CORRECTION: Récupère le 'token' directement depuis le chemin (ex: /status/TOKEN_A_LIRE)
+    const { token: paymentToken } = useParams(); 
 
     const [statutPaiement, setStatutPaiement] = useState('loading');
     const [codesTickets, setCodesTickets] = useState(null);
@@ -28,6 +25,9 @@ const ConfirmationPage = () => {
             return;
         }
 
+        // ... (Reste de la logique fetchStatus)
+        // Le reste de la fonction useEffect ne change pas car elle utilise déjà paymentToken.
+        
         const fetchStatus = async () => {
             try {
                 // Appel unique à la nouvelle route backend
@@ -57,6 +57,7 @@ const ConfirmationPage = () => {
     }, [paymentToken]);
 
     const renderStatus = () => {
+        // ... (Reste de la fonction renderStatus)
         switch (statutPaiement) {
             case 'loading':
                 return <span style={{ color: '#007BFF', fontWeight: 'bold' }}>Vérification en cours...</span>;
