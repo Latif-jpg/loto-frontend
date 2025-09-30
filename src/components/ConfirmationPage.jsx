@@ -1,15 +1,14 @@
-// src/components/ConfirmationPage.jsx (Code Corrigé)
+// src/components/ConfirmationPage.jsx
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom'; // 🚨 CHANGEMENT: Utilisez useParams pour lire le chemin
+import { useParams } from 'react-router-dom'; // 🚨 Correction : Utilisation de useParams
 import axios from 'axios';
 
-// L'URL du statut pointe vers la nouvelle route GET
 const BASE_SERVER_URL = 'https://loto-backend-83zb.onrender.com/api/payments';
 const CHECK_STATUS_URL = `${BASE_SERVER_URL}/status/`;
 
 const ConfirmationPage = () => {
-    // 🚨 CORRECTION: Récupère le 'token' directement depuis le chemin (ex: /status/TOKEN_A_LIRE)
+    // 🚨 Correction : Lit le 'token' directement depuis le chemin (/status/TOKEN_A_LIRE)
     const { token: paymentToken } = useParams(); 
 
     const [statutPaiement, setStatutPaiement] = useState('loading');
@@ -25,12 +24,8 @@ const ConfirmationPage = () => {
             return;
         }
 
-        // ... (Reste de la logique fetchStatus)
-        // Le reste de la fonction useEffect ne change pas car elle utilise déjà paymentToken.
-        
         const fetchStatus = async () => {
             try {
-                // Appel unique à la nouvelle route backend
                 const response = await axios.get(`${CHECK_STATUS_URL}${paymentToken}`);
 
                 const data = response.data;
@@ -57,7 +52,6 @@ const ConfirmationPage = () => {
     }, [paymentToken]);
 
     const renderStatus = () => {
-        // ... (Reste de la fonction renderStatus)
         switch (statutPaiement) {
             case 'loading':
                 return <span style={{ color: '#007BFF', fontWeight: 'bold' }}>Vérification en cours...</span>;
