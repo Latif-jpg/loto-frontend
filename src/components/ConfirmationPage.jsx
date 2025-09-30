@@ -1,14 +1,14 @@
 // src/components/ConfirmationPage.jsx
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom'; // 🚨 Correction : Utilisation de useParams
+import { useParams } from 'react-router-dom'; 
 import axios from 'axios';
 
 const BASE_SERVER_URL = 'https://loto-backend-83zb.onrender.com/api/payments';
 const CHECK_STATUS_URL = `${BASE_SERVER_URL}/status/`;
 
 const ConfirmationPage = () => {
-    // 🚨 Correction : Lit le 'token' directement depuis le chemin (/status/TOKEN_A_LIRE)
+    // Lit le 'token' depuis le chemin (/status/TOKEN_A_LIRE)
     const { token: paymentToken } = useParams(); 
 
     const [statutPaiement, setStatutPaiement] = useState('loading');
