@@ -102,7 +102,7 @@ const PaiementPage = () => {
         backgroundColor: '#fff'
     };
     
-    // 🟢 Style du bouton principal (Vert)
+    // Style du bouton principal (Vert)
     const buttonStyle = {
         backgroundColor: loading ? '#6c757d' : '#28a745', 
         color: 'white',
@@ -116,22 +116,34 @@ const PaiementPage = () => {
         transition: 'background-color 0.3s'
     };
 
-    // Style des informations (sans 'étoiles')
+    // Style des informations : Ajout de 'whiteSpace: "nowrap"' pour forcer l'alignement
     const infoStyle = { 
         margin: '5px 0', 
         padding: '8px 0',
         fontWeight: 'normal',
-        color: '#343a40'
+        color: '#343a40',
+        display: 'flex', // Utiliser flexbox pour aligner clé/valeur
+        justifyContent: 'space-between', // Espacement entre clé et valeur
+        borderBottom: '1px dotted #eee', // Séparateur discret
+    };
+
+    const infoLabelStyle = {
+        fontWeight: 'bold',
+        minWidth: '120px', // Donne un minimum de largeur au label
+        color: '#555',
     };
     
+    // Style pour l'emplacement du logo
     const logoContainerStyle = {
         textAlign: 'center', 
         marginBottom: '25px'
     };
     
     const logoStyle = {
-        width: '120px', 
-        height: 'auto'
+        width: '120px', // Taille du logo
+        height: 'auto',
+        // Ajout d'une marge bas pour séparer du titre
+        marginBottom: '10px', 
     };
     // ----------------------------
 
@@ -141,7 +153,7 @@ const PaiementPage = () => {
     return (
         <div className="card-container" style={cardStyle}>
             
-            {/* Emplacement du Logo */}
+            {/* Emplacement du Logo et ajustement des marges */}
             <div style={logoContainerStyle}>
                 <img 
                     src="/chemin/vers/votre/logo.png" // ⚠️ METTEZ LE CHEMIN RÉEL ICI
@@ -154,12 +166,23 @@ const PaiementPage = () => {
                 Résumé & Paiement du Ticket
             </h2>
 
-            {/* Bloc d'Informations (Nettoyé) */}
+            {/* Bloc d'Informations (Nettoyé et ajusté) */}
             <div style={{ border: '1px solid #dee2e6', backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', marginBottom: '25px' }}>
                 <h4 style={{ margin: '0 0 15px 0', color: '#007BFF', borderBottom: '1px solid #dee2e6' }}>Vos Infos Identitaires :</h4>
-                <p style={infoStyle}>**Nom/Prénom:** {clientInfo.nom} {clientInfo.prenom}</p>
-                <p style={infoStyle}>**Téléphone:** {clientInfo.telephone}</p>
-                <p style={infoStyle}>**CNIB/CNI:** {clientInfo.reference_cnib}</p>
+                
+                {/* 🚨 Correction : Suppression des ** et alignement via Flexbox */}
+                <div style={infoStyle}>
+                    <span style={infoLabelStyle}>Nom/Prénom:</span>
+                    <span>{clientInfo.nom} {clientInfo.prenom}</span>
+                </div>
+                <div style={infoStyle}>
+                    <span style={infoLabelStyle}>Téléphone:</span>
+                    <span>{clientInfo.telephone}</span>
+                </div>
+                <div style={infoStyle}>
+                    <span style={infoLabelStyle}>CNIB/CNI:</span>
+                    <span>{clientInfo.reference_cnib}</span>
+                </div>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
@@ -188,7 +211,7 @@ const PaiementPage = () => {
                         <button
                             key={name}
                             onClick={() => setPlateforme(name)}
-                            // Changement de couleur au clic (vert si sélectionné)
+                            // Bouton actif en vert clair, inactif en gris
                             style={{ 
                                 padding: '10px 15px', 
                                 border: '1px solid #28a745', 
