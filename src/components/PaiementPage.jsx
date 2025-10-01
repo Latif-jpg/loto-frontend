@@ -26,7 +26,6 @@ const PaiementPage = () => {
     const [error, setError] = useState(null);
 
     // DÉCLARATION DE L'ÉTAT CRITIQUE POUR LA REDIRECTION 
-    // Assure la portée de 'redirectionData' dans tout le composant.
     const [redirectionData, setRedirectionData] = useState(null);
     // -------------------------------------------------------------
 
@@ -108,9 +107,10 @@ const PaiementPage = () => {
     
     // --- Styles CSS Intégrés ---
     const cardStyle = {     
-        maxWidth: '450px',      
-        margin: '50px auto',        
-        padding: '30px',        
+        // 🛠️ CORRECTION 1 : Utilisation de % et réduction de la marge pour la réactivité
+        maxWidth: '95%',        
+        margin: '20px auto',    
+        padding: '15px',        // 🛠️ CORRECTION 2 : Réduction du padding pour les petits écrans
         boxShadow: '0 6px 12px rgba(0,0,0,0.15)',       
         borderRadius: '10px',
         backgroundColor: '#fff'
@@ -135,6 +135,8 @@ const PaiementPage = () => {
         display: 'flex',        
         justifyContent: 'space-between',        
         borderBottom: '1px dotted #eee',
+        // 🛠️ CORRECTION 3 : Permet aux éléments de passer à la ligne (utile pour les CNIB longues)
+        flexWrap: 'wrap', 
     };
     const infoLabelStyle = {
         fontWeight: 'bold',
@@ -144,13 +146,13 @@ const PaiementPage = () => {
     const logoContainerStyle = {
         textAlign: 'center',        
         marginBottom: '25px',
-        overflow: 'hidden',     
+        // 🛠️ CORRECTION 4 : Suppression de 'overflow: hidden' pour éviter de couper le logo textuel
+        // overflow: 'hidden',     
     };
     // ----------------------------
 
 
     // RENDU D'URGENCE (Si la redirection est en cours)
-    // NOTE : Ce bloc DOIT être DANS le composant PaiementPage
     if (redirectionData) {
         // window.location.origin donne 'https://loto-frontend.onrender.com'
         const RECEIPT_URL = window.location.origin + "/status/"; 
