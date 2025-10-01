@@ -10,256 +10,187 @@ import axios from 'axios';
 // **********************************************
 const BACKEND_URL = 'https://loto-backend-83zb.onrender.com';
 const INIT_PAYMENT_URL = `${BACKEND_URL}/api/payments`;
+const STATUS_CHECK_URL = `${BACKEND_URL}/api/payments/status`; // Nouvelle URL pour vérifier l'état
 // **********************************************
 
 // Prix unitaire du ticket : 2000 FCFA
 const PRIX_TICKET_UNITAIRE = 2000;
 
+// VARIABLES GLOBALES POUR LA GESTION DU MONITORING
+let popupWindow = null; 
+let checkInterval = null; 
+
 const PaiementPage = () => {
-    const { userId } = useParams();
-    const navigate = useNavigate();
+    const { userId } = useParams();
+    const navigate = useNavigate();
 
-    const [clientInfo, setClientInfo] = useState(null);
-    const [nbTickets, setNbTickets] = useState(1);
-    const [plateforme, setPlateforme] = useState('Orange Money'); 
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [clientInfo, setClientInfo] = useState(null);
+    const [nbTickets, setNbTickets] = useState(1);
+    const [plateforme, setPlateforme] = useState('Orange Money');    
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    
+    // NOUVEAUX ÉTATS
+    const [isMonitoring, setIsMonitoring] = useState(false); // État de surveillance
+    const [currentPaymentToken, setCurrentPaymentToken] = useState(null); // Le token à suivre
 
-    const totalMontant = nbTickets * PRIX_TICKET_UNITAIRE;
-    const MIN_AMOUNT = PRIX_TICKET_UNITAIRE; 
+    const totalMontant = nbTickets * PRIX_TICKET_UNITAIRE;
+    const MIN_AMOUNT = PRIX_TICKET_UNITAIRE;    
 
-    // --- LOGIQUE DE CHARGEMENT DES INFOS UTILISATEUR ---
-    useEffect(() => {
-        const fetchClientInfo = async () => {
-            // ... (logique de chargement Supabase)
-            try {
-                const { data, error } = await supabase
-                    .from('utilisateurs')
-                    .select('*')
-                    .eq('id', userId)
-                    .single();
+    // --- NETTOYAGE DU MONITORING AU DÉMONTAGE DU COMPOSANT ---
+    useEffect(() => {
+        // ... (logique de chargement Supabase)
+        // ... (votre logique fetchClientInfo)
+        
+        return () => {
+            // S'assure de nettoyer l'intervalle si l'utilisateur quitte la page
+            if (checkInterval) {
+                clearInterval(checkInterval);
+            }
+        };
+    }, [userId]); 
 
-                if (error) throw error;
-                setClientInfo(data);
-            } catch (err) {
-                setError('Impossible de trouver vos informations utilisateur.');
-            } finally {
-                setLoading(false);
-            }
-        };
+    // --- NOUVELLE FONCTION : SURVEILLANCE DE LA POP-UP ---
+    const startPopupMonitor = (token) => {
+        // Arrête toute surveillance précédente
+        if (checkInterval) clearInterval(checkInterval);
+        
+        setIsMonitoring(true);
+        setCurrentPaymentToken(token); // Stocke le token pour la vérification future
 
-        if (userId) {
-            fetchClientInfo();
-        } else {
-            setError("L'ID utilisateur est manquant.");
-            setLoading(false);
-        }
-    }, [userId]);
+        // Définir la fonction de vérification
+        checkInterval = setInterval(async () => {
+            // 1. Vérification si l'utilisateur a fermé la pop-up
+            if (popupWindow && popupWindow.closed) {
+                console.log("Pop-up fermée. Redirection vers la page de statut.");
+                
+                clearInterval(checkInterval);
+                setIsMonitoring(false);
+                setLoading(false);
 
-    // --- LOGIQUE DE PAIEMENT VERS LE BACKEND ---
-    const handleLaunchPayment = async () => {
-        if (!clientInfo) return;
-        if (totalMontant < MIN_AMOUNT) {
-             setError(`Le montant minimum est de ${MIN_AMOUNT.toLocaleString('fr-FR')} XOF (1 ticket).`);
-             return;
-        }
+                // Redirige vers la page de reçu/statut avec le token obtenu
+                navigate(`/status/${token}`);
+                return;
+            }
+            
+            // 2. Vérification proactive (Optionnel : si le webhook est lent)
+            // Cette partie vérifie si le paiement a été validé même si la pop-up est toujours ouverte
+            // REMARQUE: Nécessite une route /api/payments/status/:token dans votre backend
+            //try {
+                //const res = await axios.get(`${STATUS_CHECK_URL}/${token}`);
+                //if (res.data.status === 'completed' || res.data.status === 'paid') {
+                    //console.log("Statut détecté par polling. Fermeture du monitor et redirection.");
+                    //popupWindow.close(); // Ferme la pop-up si elle est encore là
+                    //clearInterval(checkInterval);
+                    //setIsMonitoring(false);
+                    //setLoading(false);
+                    //navigate(`/status/${token}`);
+                //}
+            //} catch (e) {
+                //console.log("Vérification de statut en attente...");
+            //}
 
-        setLoading(true);
-        setError(null);
+        }, 3000); // Vérifie toutes les 3 secondes
+    };
 
-        try {
-            const response = await axios.post(INIT_PAYMENT_URL, {
-                userId: clientInfo.id,
-                amount: totalMontant,
-                numTickets: nbTickets,
-                provider: plateforme,
-            });
 
-            if (response.data && response.data.checkoutPageUrlWithPaymentToken) {
-                // 🎯 AMÉLIORATION : Avertir l'utilisateur de ne pas fermer la page
-                const confirmationMessage = `✅ Veuillez CONFIRMER le paiement sur la page PayDunya.
+    // --- LOGIQUE DE PAIEMENT VERS LE BACKEND ---
+    const handleLaunchPayment = async () => {
+        if (!clientInfo) return;
+        if (totalMontant < MIN_AMOUNT) {
+             setError(`Le montant minimum est de ${MIN_AMOUNT.toLocaleString('fr-FR')} XOF (1 ticket).`);
+             return;
+        }
 
-                ⚠️ TRÈS IMPORTANT : Après le paiement, NE FERMEZ PAS la page.
-                Vous serez automatiquement redirigé(e) vers la page de votre reçu.`;
+        setLoading(true);
+        setError(null);
+        setIsMonitoring(false); // Réinitialise le monitoring
 
-                // On utilise confirm() au lieu de alert() pour donner deux choix à l'utilisateur (OK/Annuler)
-                if (window.confirm(confirmationMessage)) {
-                    window.location.href = response.data.checkoutPageUrlWithPaymentToken;
+        try {
+            const response = await axios.post(INIT_PAYMENT_URL, {
+                userId: clientInfo.id,
+                amount: totalMontant,
+                numTickets: nbTickets,
+                provider: plateforme,
+            });
+
+            // ⚠️ ASSUREZ-VOUS QUE VOTRE BACKEND RENVOIE LE TOKEN DE PAIEMENT ICI !
+            const paymentToken = response.data.paymentToken; // J'assume cette propriété existe
+            
+            if (response.data && response.data.checkoutPageUrlWithPaymentToken && paymentToken) {
+                const checkoutUrl = response.data.checkoutPageUrlWithPaymentToken;
+                
+                // Ouvre PayDunya dans une pop-up. Le 'name' doit être constant.
+                popupWindow = window.open(checkoutUrl, 'PayDunyaPayment', 'width=800,height=700,resizable=yes,scrollbars=yes');
+                
+                if (popupWindow) {
+                    startPopupMonitor(paymentToken); // Démarre la surveillance
                 } else {
-                    // Si l'utilisateur annule le message, on annule la redirection
+                    setError("Veuillez autoriser les fenêtres pop-up pour lancer le paiement.");
                     setLoading(false);
                 }
-            } else {
-                setError('Erreur lors de l\'initialisation du paiement (réponse serveur invalide).');
-            }
 
-        } catch (err) {
-            console.error('Erreur Serveur/Paiement:', err.response?.data?.error || err.message);
-            setError(`Erreur de communication avec le service de paiement: ${err.response?.data?.error || err.message}.`);
-        } finally {
-            setLoading(false);
-        }
-    };
-    
-    // --- Styles CSS Intégrés (inchangés) ---
-    const cardStyle = { 
-        maxWidth: '450px', 
-        margin: '50px auto', 
-        padding: '30px', 
-        boxShadow: '0 6px 12px rgba(0,0,0,0.15)', 
-        borderRadius: '10px',
-        backgroundColor: '#fff'
-    };
-    
-    // Style du bouton principal (Vert)
-    const buttonStyle = {
-        backgroundColor: loading ? '#6c757d' : '#28a745', 
-        color: 'white',
-        padding: '15px 25px',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontSize: '18px',
-        width: '100%',
-        marginTop: '20px',
-        transition: 'background-color 0.3s'
-    };
+            } else {
+                setError('Erreur lors de l\'initialisation du paiement (token ou URL manquant).');
+                setLoading(false);
+            }
 
-    // Style des informations (sans 'étoiles' et aligné)
-    const infoStyle = { 
-        margin: '5px 0', 
-        padding: '8px 0',
-        fontWeight: 'normal',
-        color: '#343a40',
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        borderBottom: '1px dotted #eee',
-    };
+        } catch (err) {
+            console.error('Erreur Serveur/Paiement:', err.response?.data?.error || err.message);
+            setError(`Erreur de communication avec le service de paiement.`);
+            setLoading(false);
+        }
+    };
 
-    const infoLabelStyle = {
-        fontWeight: 'bold',
-        minWidth: '120px', 
-        color: '#555',
-    };
-    
-    // Style pour l'emplacement du logo (Stabilité assurée)
-    const logoContainerStyle = {
-        textAlign: 'center', 
-        marginBottom: '25px',
-        overflow: 'hidden', 
-    };
-    
-    const logoStyle = {
-        maxWidth: '100%', // Empêche le débordement horizontal
-        maxHeight: '120px', 
-        height: 'auto',
-        display: 'block', 
-        margin: '0 auto', 
-        marginBottom: '10px', 
-    };
-    // ----------------------------
 
-    if (loading && !clientInfo) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Chargement de vos informations...</div>;
-    if (error && !clientInfo) return <div style={{ color: 'red', textAlign: 'center', marginTop: '20px' }}>Erreur : {error}</div>;
+    // --- RENDU D'ATTENTE LORSQUE LE MONITORING EST ACTIF ---
+    if (isMonitoring) {
+        return (
+            <div style={{ textAlign: 'center', marginTop: '50px', padding: '30px', backgroundColor: '#e9f7ef', border: '1px solid #28a745', borderRadius: '8px', maxWidth: '600px', margin: '50px auto' }}>
+                <h3 style={{ color: '#28a745' }}>💳 Paiement en cours (PayDunya)...</h3>
+                <p>
+                    Veuillez **terminer le paiement** dans la nouvelle fenêtre.
+                </p>
+                <p style={{ fontWeight: 'bold', color: '#007BFF' }}>
+                    Dès que vous fermez la fenêtre PayDunya, cette page se rechargera automatiquement pour afficher votre reçu.
+                </p>
+                <div style={{ margin: '20px 0' }}>
+                    {/* Placeholder for a spinning loading icon */}
+                    <div style={{ border: '4px solid rgba(0,0,0,.1)', width: '36px', height: '36px', borderRadius: '50%', borderLeftColor: '#28a745', animation: 'spin 1s linear infinite', margin: '0 auto' }}></div>
+                </div>
+                <p style={{ fontSize: '0.9em', color: '#6c757d' }}>
+                    Token de la transaction : {currentPaymentToken} (Gardez ce code en cas de problème technique).
+                </p>
+            </div>
+        );
+    }
+    
+    // --- Reste du rendu du formulaire de paiement (inchangé) ---
+    // ... (votre code JSX original)
+    if (loading && !clientInfo) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Chargement de vos informations...</div>;
+    if (error && !clientInfo) return <div style={{ color: 'red', textAlign: 'center', marginTop: '20px' }}>Erreur : {error}</div>;
 
-    return (
-        <div className="card-container" style={cardStyle}>
-            
-            {/* Emplacement du Logo Corrigé */}
-            <div style={logoContainerStyle}>
-                <img 
-                    src="/chemin/vers/votre/logo.png" // ⚠️ METTEZ LE CHEMIN RÉEL ICI
-                    alt="Logo LotoEmploi" 
-                    style={logoStyle}
-                />
-            </div>
-            
-            <h2 style={{ color: '#343a40', borderBottom: '1px solid #ddd', paddingBottom: '10px', textAlign: 'center' }}>
-                Résumé & Paiement du Ticket
-            </h2>
+    // ... (Code JSX du formulaire ci-dessous)
+    return (
+        <div className="card-container" style={cardStyle}>
+            {/* ... (votre JSX de logo, infos, etc.) */}
 
-            {/* Bloc d'Informations (Nettoyé et aligné) */}
-            <div style={{ border: '1px solid #dee2e6', backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', marginBottom: '25px' }}>
-                <h4 style={{ margin: '0 0 15px 0', color: '#007BFF', borderBottom: '1px solid #dee2e6' }}>Vos Infos Identitaires :</h4>
-                
-                {clientInfo && (
-                    <>
-                        <div style={infoStyle}>
-                            <span style={infoLabelStyle}>Nom/Prénom:</span>
-                            <span>{clientInfo.nom} {clientInfo.prenom}</span>
-                        </div>
-                        <div style={infoStyle}>
-                            <span style={infoLabelStyle}>Téléphone:</span>
-                            <span>{clientInfo.telephone}</span>
-                        </div>
-                        <div style={infoStyle}>
-                            <span style={infoLabelStyle}>CNIB/CNI:</span>
-                            <span>{clientInfo.reference_cnib}</span>
-                        </div>
-                    </>
-                )}
-            </div>
+            {error && (
+                <p style={{ color: 'red', textAlign: 'center', fontWeight: 'bold' }}>
+                    {error}
+                </p>
+            )}
 
-            <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                    Nombre de tickets ({PRIX_TICKET_UNITAIRE.toLocaleString('fr-FR')} XOF l'unité) :
-                </label>
-                <input
-                    type="number"
-                    value={nbTickets}
-                    min="1"
-                    onChange={(e) => setNbTickets(Math.max(1, parseInt(e.target.value) || 1))}
-                    style={{ width: '25%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
-                />
-            </div>
-
-            <h3 style={{ fontSize: '1.8rem', color: '#dc3545', marginBottom: '25px', padding: '15px', border: '2px solid #dc3545', backgroundColor: '#fefefe', borderRadius: '4px', textAlign: 'center' }}>
-                Montant Total : {totalMontant.toLocaleString('fr-FR')} XOF
-            </h3>
-
-            <div style={{ marginBottom: '30px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                    Plateforme de paiement (Mobile Money) :
-                </label>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    {['Orange Money', 'Moov Money', 'Sank Money', 'Coris Money'].map((name) => (
-                        <button
-                            key={name}
-                            onClick={() => setPlateforme(name)}
-                            style={{ 
-                                padding: '10px 15px', 
-                                border: '1px solid #28a745', 
-                                borderRadius: '5px',
-                                cursor: 'pointer',
-                                backgroundColor: plateforme === name ? '#28a745' : '#e9ecef',
-                                color: plateforme === name ? 'white' : '#495057',
-                                fontWeight: plateforme === name ? 'bold' : 'normal',
-                                transition: 'all 0.2s'
-                            }}
-                            disabled={loading}
-                        >
-                            {name}
-                        </button>
-                    ))}
-                </div>
-            </div>
-            
-            {error && (
-                <p style={{ color: 'red', textAlign: 'center', fontWeight: 'bold' }}>
-                    {error}
-                </p>
-            )}
-
-            {/* Bouton de Paiement Final (VERT) */}
-            <button 
-                onClick={handleLaunchPayment} 
-                disabled={loading || totalMontant < MIN_AMOUNT} 
-                style={buttonStyle}
-            >
-                {loading ? 'Redirection en cours...' : `Payer ${totalMontant.toLocaleString('fr-FR')} XOF`}
-            </button>
-        </div>
-    );
+            {/* Bouton de Paiement Final (VERT) */}
+            <button 
+                onClick={handleLaunchPayment} 
+                disabled={loading || totalMontant < MIN_AMOUNT} 
+                style={buttonStyle}
+            >
+                {loading ? 'Initialisation...' : `Payer ${totalMontant.toLocaleString('fr-FR')} XOF`}
+            </button>
+        </div>
+    );
 };
 
 export default PaiementPage;
