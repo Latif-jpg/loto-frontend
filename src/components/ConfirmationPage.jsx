@@ -4,8 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom'; 
 import axios from 'axios';
 
-const BASE_SERVER_URL = 'https://loto-backend-83zb.onrender.com/api/payments';
-const CHECK_STATUS_URL = `${BASE_SERVER_URL}/status/`;
+// **********************************************
+// ********* CORRECTION CRITIQUE DU CHEMIN *************
+// **********************************************
+// 1. URL de base du Backend (SANS chemin API)
+const BACKEND_BASE_URL = 'https://loto-backend-83zb.onrender.com';
+
+// 2. Utilisation de la nouvelle route simplifiée : /api/status/:token
+const CHECK_STATUS_URL = `${BACKEND_BASE_URL}/api/status/`;
+// **********************************************
 
 const ConfirmationPage = () => {
     const { token: paymentToken } = useParams(); 
@@ -14,10 +21,10 @@ const ConfirmationPage = () => {
 
     const [statutPaiement, setStatutPaiement] = useState('loading');
     const [codesTickets, setCodesTickets] = useState(null);
-    // 🟢 Nouvelles informations pour le reçu
-    const [clientInfo, setClientInfo] = useState(null);
-    const [transactionDetails, setTransactionDetails] = useState({ nbTickets: 0, amount: 0 });
-    // ---------------------------------
+    // 🟢 Nouvelles informations pour le reçu
+    const [clientInfo, setClientInfo] = useState(null);
+    const [transactionDetails, setTransactionDetails] = useState({ nbTickets: 0, amount: 0 });
+    // ---------------------------------
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState("Vérification du statut de votre paiement...");
 
@@ -36,18 +43,19 @@ const ConfirmationPage = () => {
 
         const fetchStatus = async () => {
             try {
-                const response = await axios.get(`${CHECK_STATUS_URL}${paymentToken}`);
+                // 🎯 L'appel utilise maintenant: https://loto-backend-83zb.onrender.com/api/status/le_token
+                const response = await axios.get(`${CHECK_STATUS_URL}${paymentToken}`); // <--- CORRECTION EFFICACE
 
                 const data = response.data;
                 setStatutPaiement(data.status);
-                
-                // 🟢 Stockage des nouvelles données
-                if (data.client) setClientInfo(data.client);
-                setTransactionDetails({ 
-                    nbTickets: data.nbTickets || 0, 
-                    amount: data.amount || 0 
-                });
-                // ---------------------------------
+                
+                // 🟢 Stockage des nouvelles données
+                if (data.client) setClientInfo(data.client);
+                setTransactionDetails({ 
+                    nbTickets: data.nbTickets || 0, 
+                    amount: data.amount || 0 
+                });
+                // ---------------------------------
 
                 if (data.status === 'paid') {
                     setCodesTickets(data.tickets);
@@ -59,7 +67,12 @@ const ConfirmationPage = () => {
                 }
             } catch (err) {
                 console.error("Erreur de vérification du statut:", err);
-                setMessage("Erreur de communication avec le serveur pour vérifier la transaction.");
+                // Le 404 est ici une erreur.
+                if (err.response && err.response.status === 404) {
+                    setMessage("Transaction introuvable (404). Peut-être n'a-t-elle jamais été initiée ?");
+                } else {
+                    setMessage("Erreur de communication avec le serveur pour vérifier la transaction.");
+                }
                 setStatutPaiement('error');
             } finally {
                 setLoading(false);
@@ -71,33 +84,33 @@ const ConfirmationPage = () => {
 
     const renderStatus = () => {
         // ... (Logique inchangée)
-        switch (statutPaiement) {
-            case 'loading':
-                return <span style={{ color: '#007BFF', fontWeight: 'bold' }}>Vérification en cours...</span>;
-            case 'pending':
-                return <span style={{ color: '#ffc107', fontWeight: 'bold' }}>EN ATTENTE de confirmation</span>;
-            case 'paid':
-                return <span style={{ color: '#28a745', fontWeight: 'bold' }}>CONFIRMÉ et PAIÉ !</span>;
-            case 'failed':
-            case 'error':
-                return <span style={{ color: '#dc3545', fontWeight: 'bold' }}>{statutPaiement === 'failed' ? 'ÉCHOUÉ' : 'ERREUR'}</span>;
-            default:
-                return <span>Statut inconnu</span>;
-        }
+        switch (statutPaiement) {
+            case 'loading':
+                return <span style={{ color: '#007BFF', fontWeight: 'bold' }}>Vérification en cours...</span>;
+            case 'pending':
+                return <span style={{ color: '#ffc107', fontWeight: 'bold' }}>EN ATTENTE de confirmation</span>;
+            case 'paid':
+                return <span style={{ color: '#28a745', fontWeight: 'bold' }}>CONFIRMÉ et PAIÉ !</span>;
+            case 'failed':
+            case 'error':
+                return <span style={{ color: '#dc3545', fontWeight: 'bold' }}>{statutPaiement === 'failed' ? 'ÉCHOUÉ' : 'ERREUR'}</span>;
+            default:
+                return <span>Statut inconnu</span>;
+        }
     };
-    
-    // Style du bouton d'impression
-    const printButtonStyle = {
-        marginTop: '30px', 
-        backgroundColor: '#007BFF', 
-        color: 'white', 
-        padding: '15px 25px', 
-        border: 'none', 
-        borderRadius: '5px', 
-        cursor: 'pointer', 
-        fontSize: '18px', 
-        width: '100%'
-    };
+    
+    // Style du bouton d'impression
+    const printButtonStyle = {
+        marginTop: '30px', 
+        backgroundColor: '#007BFF', 
+        color: 'white', 
+        padding: '15px 25px', 
+        border: 'none', 
+        borderRadius: '5px', 
+        cursor: 'pointer', 
+        fontSize: '18px', 
+        width: '100%'
+    };
 
     return (
         <div className="card-container" style={{ padding: '30px', maxWidth: '600px', margin: '50px auto' }}>
@@ -110,34 +123,34 @@ const ConfirmationPage = () => {
                 <p><strong>Jeton (Token):</strong> {paymentToken}</p>
                 <p><strong>Message:</strong> {message}</p>
             </div>
-            
-            {/* 🟢 BLOC D'INFORMATIONS CLIENT & TRANSACTION */}
-            {(clientInfo || transactionDetails.amount > 0) && (
-                <div style={{ margin: '30px 0', border: '1px solid #dee2e6', padding: '15px', borderRadius: '8px', backgroundColor: '#fff' }}>
-                    <h3 style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', color: '#007BFF' }}>Détails du Reçu</h3>
-                    
-                    {clientInfo && (
-                        <>
-                            <p style={{ borderBottom: '1px dotted #eee', paddingBottom: '5px' }}>
-                                <strong>Nom :</strong> {clientInfo.prenom} {clientInfo.nom}
-                            </p>
-                            <p style={{ borderBottom: '1px dotted #eee', paddingBottom: '5px' }}>
-                                <strong>Téléphone :</strong> {clientInfo.telephone}
-                            </p>
-                            <p style={{ borderBottom: '1px dotted #eee', paddingBottom: '5px' }}>
-                                <strong>CNIB :</strong> {clientInfo.reference_cnib}
-                            </p>
-                        </>
-                    )}
-                    
-                    <h4 style={{ marginTop: '15px', color: '#dc3545' }}>Transaction</h4>
-                    <p><strong>Nb Tickets :</strong> {transactionDetails.nbTickets}</p>
-                    <h3 style={{ color: '#28a745' }}>
-                        Montant Payé : {transactionDetails.amount.toLocaleString('fr-FR')} XOF
-                    </h3>
-                </div>
-            )}
-            {/* ------------------------------------------- */}
+            
+            {/* 🟢 BLOC D'INFORMATIONS CLIENT & TRANSACTION */}
+            {(clientInfo || transactionDetails.amount > 0) && (
+                <div style={{ margin: '30px 0', border: '1px solid #dee2e6', padding: '15px', borderRadius: '8px', backgroundColor: '#fff' }}>
+                    <h3 style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', color: '#007BFF' }}>Détails du Reçu</h3>
+                    
+                    {clientInfo && (
+                        <>
+                            <p style={{ borderBottom: '1px dotted #eee', paddingBottom: '5px' }}>
+                                <strong>Nom :</strong> {clientInfo.prenom} {clientInfo.nom}
+                            </p>
+                            <p style={{ borderBottom: '1px dotted #eee', paddingBottom: '5px' }}>
+                                <strong>Téléphone :</strong> {clientInfo.telephone}
+                            </p>
+                            <p style={{ borderBottom: '1px dotted #eee', paddingBottom: '5px' }}>
+                                <strong>CNIB :</strong> {clientInfo.reference_cnib}
+                            </p>
+                        </>
+                    )}
+                    
+                    <h4 style={{ marginTop: '15px', color: '#dc3545' }}>Transaction</h4>
+                    <p><strong>Nb Tickets :</strong> {transactionDetails.nbTickets}</p>
+                    <h3 style={{ color: '#28a745' }}>
+                        Montant Payé : {transactionDetails.amount.toLocaleString('fr-FR')} XOF
+                    </h3>
+                </div>
+            )}
+            {/* ------------------------------------------- */}
 
             {/* Affichage des codes de tickets si le paiement est confirmé */}
             {codesTickets && statutPaiement === 'paid' && (
@@ -152,17 +165,17 @@ const ConfirmationPage = () => {
                     </ul>
                 </div>
             )}
-            
-            {/* 🟢 Bouton d'Impression / Téléchargement */}
-            {statutPaiement === 'paid' && (
-                <button
-                    onClick={() => window.print()}
-                    style={printButtonStyle}
-                >
-                    🖨️ Imprimer / Télécharger le Reçu (PDF)
-                </button>
-            )}
-            {/* ---------------------------------------- */}
+            
+            {/* 🟢 Bouton d'Impression / Téléchargement */}
+            {statutPaiement === 'paid' && (
+                <button
+                    onClick={() => window.print()}
+                    style={printButtonStyle}
+                >
+                    🖨️ Imprimer / Télécharger le Reçu (PDF)
+                </button>
+            )}
+            {/* ---------------------------------------- */}
 
             {loading && statutPaiement === 'loading' && (
                 <div style={{ textAlign: 'center', marginTop: '20px', color: '#6c757d' }}>
