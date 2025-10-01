@@ -62,7 +62,12 @@ const PaiementPage = () => {
     // --- LOGIQUE DE PAIEMENT VERS LE BACKEND ---
     const handleLaunchPayment = async () => {
         if (!clientInfo) return;
-        if (totalMontant < MIN_AMOUNT) {
+        
+        // S'assurer que le nombre de tickets est d'au moins 1 avant de payer
+        const currentTickets = nbTickets > 0 ? nbTickets : 1;
+        const currentAmount = currentTickets * PRIX_TICKET_UNITAIRE;
+
+        if (currentAmount < MIN_AMOUNT) {
               setError(`Le montant minimum est de ${MIN_AMOUNT.toLocaleString('fr-FR')} XOF (1 ticket).`);
               return;
         }
@@ -74,8 +79,8 @@ const PaiementPage = () => {
         try {
             const response = await axios.post(INIT_PAYMENT_URL, {
                 userId: clientInfo.id,
-                amount: totalMontant,
-                numTickets: nbTickets,
+                amount: currentAmount,
+                numTickets: currentTickets,
                 provider: plateforme,
             });
 
@@ -107,10 +112,9 @@ const PaiementPage = () => {
     
     // --- Styles CSS Intégrés ---
     const cardStyle = {     
-        // 🛠️ CORRECTION 1 : Utilisation de % et réduction de la marge pour la réactivité
-        maxWidth: '95%',        
-        margin: '20px auto',    
-        padding: '15px',        // 🛠️ CORRECTION 2 : Réduction du padding pour les petits écrans
+        maxWidth: '95%',        // 👈 Rendu plus réactif
+        margin: '20px auto',    // 👈 Moins de marge en haut
+        padding: '15px',        // 👈 Réduction du padding
         boxShadow: '0 6px 12px rgba(0,0,0,0.15)',       
         borderRadius: '10px',
         backgroundColor: '#fff'
@@ -135,8 +139,7 @@ const PaiementPage = () => {
         display: 'flex',        
         justifyContent: 'space-between',        
         borderBottom: '1px dotted #eee',
-        // 🛠️ CORRECTION 3 : Permet aux éléments de passer à la ligne (utile pour les CNIB longues)
-        flexWrap: 'wrap', 
+        flexWrap: 'wrap',       // 👈 Permet aux champs de passer à la ligne (évite le débordement)
     };
     const infoLabelStyle = {
         fontWeight: 'bold',
@@ -146,8 +149,7 @@ const PaiementPage = () => {
     const logoContainerStyle = {
         textAlign: 'center',        
         marginBottom: '25px',
-        // 🛠️ CORRECTION 4 : Suppression de 'overflow: hidden' pour éviter de couper le logo textuel
-        // overflow: 'hidden',     
+        // 'overflow: hidden' est retiré pour s'assurer que le texte est visible
     };
     // ----------------------------
 
@@ -159,7 +161,7 @@ const PaiementPage = () => {
         const fullReceiptUrl = RECEIPT_URL + redirectionData.paymentToken;
 
         return (
-            <div style={{ textAlign: 'center', marginTop: '50px', padding: '30px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '8px', maxWidth: '600px', margin: '50px auto' }}>
+            <div style={{ textAlign: 'center', marginTop: '50px', padding: '30px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '8px', maxWidth: '95%', margin: '20px auto' }}>
                 <h3 style={{ color: '#856404' }}>⚠️ Redirection Imminente vers PayDunya...</h3>
                 
                 <p style={{ margin: '15px 0' }}>
@@ -205,7 +207,7 @@ const PaiementPage = () => {
     return (
         <div className="card-container" style={cardStyle}>
             
-            {/* LOGO TEXTE STYLISÉ */}
+            {/* LOGO TEXTE STYLISÉ (Ne devrait plus être coupé) */}
             <div style={logoContainerStyle}>
                 <h1 style={{ fontSize: '2.5rem', margin: '0', textTransform: 'uppercase' }}>
                     <span style={{ color: '#dc3545', fontWeight: 'bold' }}>Loto</span>
@@ -223,6 +225,7 @@ const PaiementPage = () => {
                 
                 {clientInfo && (
                     <>
+                        {/* Ces divs utilisent désormais 'flexWrap: wrap' pour ne pas déborder */}
                         <div style={infoStyle}>
                             <span style={infoLabelStyle}>Nom/Prénom:</span>
                             <span>{clientInfo.nom} {clientInfo.prenom}</span>
@@ -245,10 +248,14 @@ const PaiementPage = () => {
                 </label>
                 <input
                     type="number"
-                    value={nbTickets}
+                    value={nbTickets === 0 ? '' : nbTickets} // 👈 Affiche vide si 0, permettant l'effacement
                     min="1"
-                    onChange={(e) => setNbTickets(Math.max(1, parseInt(e.target.value) || 1))}
-                    style={{ width: '25%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
+                    onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        // 🛠️ CORRECTION SAISIE MOBILE : Permet de laisser le champ vide (valeur = 0)
+                        setNbTickets(value > 0 ? value : 0);
+                    }}
+                    style={{ width: '50%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', textAlign: 'center' }}
                 />
             </div>
 
@@ -292,7 +299,7 @@ const PaiementPage = () => {
             {/* Bouton de Paiement Final (VERT) */}
             <button      
                 onClick={handleLaunchPayment}      
-                disabled={loading || totalMontant < MIN_AMOUNT}      
+                disabled={loading || nbTickets < 1} // 👈 Vérifie que nbTickets est au moins 1
                 style={buttonStyle}
             >
                 {loading ? 'Initialisation...' : `Payer ${totalMontant.toLocaleString('fr-FR')} XOF`}
